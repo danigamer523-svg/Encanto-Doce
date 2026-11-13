@@ -1,3 +1,3 @@
 export const environment = {
-  apiUrl: 'encanto-doce-production.up.railway.app',
+  apiUrl: 'https://encanto-doce-production.up.railway.app',
 };
