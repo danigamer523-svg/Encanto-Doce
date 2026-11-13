@@ -1,0 +1,408 @@
+<header class="topo">
+  <span class="marca">🧁 Encanto Doce</span>
+  <nav>
+    <a href="#cardapio">Cardápio</a>
+    <a href="#sobre">Sobre</a>
+    <a href="#contato">Contato</a>
+    @if (auth.session(); as session) {
+      <span class="usuario-logado">
+        Olá, {{ session.username }}
+      </span>
+      <button type="button" class="btn-login" (click)="abrirHistorico()">Histórico de pedidos</button>
+      <button type="button" class="btn-login" (click)="encerrarSessao()">Sair</button>
+    } @else {
+      <button type="button" class="btn-login" routerLink="/login">Entrar</button>
+      <button type="button" class="btn-conta" routerLink="/cadastro">Criar conta</button>
+    }
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-texto">
+      <p class="selo">Cupcakes artesanais</p>
+      <h1>Bem-vindo à Encanto Doce</h1>
+      <p class="sub">Cupcakes feitos com amor para adoçar o seu dia, do jeitinho de casa.</p>
+      <a class="botao" href="#cardapio">Ver cardápio</a>
+      @if (!auth.isAuthenticated()) {
+        <div class="acoes">
+          <button type="button" class="btn-conta" routerLink="/cadastro">Criar conta</button>
+          <button type="button" class="btn-login" routerLink="/login">Já tenho conta</button>
+        </div>
+      }
+    </div>
+    <div class="hero-arte" aria-hidden="true">🧁</div>
+  </section>
+
+  <section id="cardapio" class="secao">
+    <h2>Nossos queridinhos</h2>
+    @if (produtosCarregando()) {
+      <p>Carregando produtos...</p>
+    } @else if (produtosErro()) {
+      <p role="alert">{{ produtosErro() }}</p>
+      <button type="button" class="btn-login" (click)="recarregarProdutos()">Tentar novamente</button>
+    } @else if (cupcakes().length === 0) {
+      <p>Não há produtos disponíveis no momento.</p>
+    } @else {
+      <div class="grade">
+        @for (c of cupcakes(); track c.id) {
+          <article class="card" [style.background]="c.cor">
+            <div class="card-emoji">{{ c.emoji }}</div>
+            <h3>{{ c.nome }}</h3>
+            <p>{{ c.descricao }}</p>
+            <p>{{ c.preco | currency: 'BRL' }}</p>
+            @if (!c.disponivel) {
+              <p>Produto indisponível</p>
+            }
+            <div class="produto-acoes">
+              <span class="rotulo-quantidade">Quantidade</span>
+              <div class="seletor-quantidade" role="group" [attr.aria-label]="'Quantidade de ' + c.nome">
+                <button
+                  type="button"
+                  [attr.aria-label]="'Diminuir quantidade de ' + c.nome"
+                  [disabled]="!c.disponivel || obterQuantidade(c.id) <= 1"
+                  (click)="alterarQuantidadeSelecionada(c.id, -1)"
+                >
+                  −
+                </button>
+                <span aria-live="polite">{{ obterQuantidade(c.id) }}</span>
+                <button
+                  type="button"
+                  [attr.aria-label]="'Aumentar quantidade de ' + c.nome"
+                  [disabled]="!c.disponivel || obterQuantidade(c.id) >= 99 || obterQuantidade(c.id) >= c.estoque"
+                  (click)="alterarQuantidadeSelecionada(c.id, 1)"
+                >
+                  +
+                </button>
+              </div>
+              <button
+                type="button"
+                class="btn-adicionar"
+                [disabled]="!c.disponivel"
+                (click)="adicionarAoCarrinho(c)"
+              >
+                Adicionar ao carrinho
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </section>
+
+  <section id="sobre" class="secao claro">
+    <h2>Por que Encanto Doce?</h2>
+    <div class="grade">
+      @for (d of diferenciais; track d.titulo) {
+        <article class="dif">
+          <div class="card-emoji">{{ d.icone }}</div>
+          <h3>{{ d.titulo }}</h3>
+          <p>{{ d.texto }}</p>
+        </article>
+      }
+    </div>
+  </section>
+</main>
+
+<footer id="contato" class="rodape">
+  <p>🧁 Encanto Doce — Feito com carinho · Encomendas pelo WhatsApp</p>
+</footer>
+
+<section class="carrinho-flutuante" aria-label="Carrinho de compras">
+  @if (carrinhoAberto()) {
+    <div id="painel-carrinho" class="painel-carrinho">
+      <div class="cabecalho-carrinho">
+        <h2>Meu carrinho</h2>
+        <button
+          type="button"
+          class="btn-fechar"
+          aria-label="Fechar carrinho"
+          (click)="carrinhoAberto.set(false)"
+        >
+          ×
+        </button>
+      </div>
+      @if (cart.items().length === 0) {
+        <p class="carrinho-vazio">Seu carrinho está vazio.</p>
+      } @else {
+        <ul class="lista-carrinho">
+          @for (item of cart.items(); track item.id) {
+            <li>
+              <span class="item-carrinho-nome">
+                {{ item.emoji }} {{ item.nome }}
+                <small>{{ item.preco | currency: 'BRL' }} cada</small>
+              </span>
+              <div class="item-carrinho-acoes">
+                <button
+                  type="button"
+                  [attr.aria-label]="'Diminuir quantidade de ' + item.nome"
+                  [disabled]="item.quantidade <= 1"
+                  (click)="alterarQuantidade(item.id, item.quantidade - 1)"
+                >
+                  −
+                </button>
+                <span>{{ item.quantidade }}</span>
+                <button
+                  type="button"
+                  [attr.aria-label]="'Aumentar quantidade de ' + item.nome"
+                  (click)="alterarQuantidade(item.id, item.quantidade + 1)"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  class="btn-remover"
+                  [attr.aria-label]="'Remover ' + item.nome + ' do carrinho'"
+                  (click)="cart.remove(item.id)"
+                >
+                  Remover
+                </button>
+              </div>
+              <strong>{{ item.preco * item.quantidade | currency: 'BRL' }}</strong>
+            </li>
+          }
+        </ul>
+        <p class="carrinho-total">
+          Total: <strong>{{ cart.total() | currency: 'BRL' }}</strong>
+        </p>
+        <button
+          type="button"
+          class="btn-pagamento"
+          (click)="iniciarCheckout(); $event.stopPropagation()"
+        >
+          Ir para pagamento
+        </button>
+      }
+    </div>
+  }
+  <button
+    type="button"
+    class="btn-carrinho"
+    [attr.aria-expanded]="carrinhoAberto()"
+    aria-controls="painel-carrinho"
+    (click)="carrinhoAberto.update((aberto) => !aberto)"
+  >
+    <span aria-hidden="true">🛒</span>
+    Carrinho
+    <span class="badge-carrinho" aria-label="itens no carrinho">{{ cart.totalItems() }}</span>
+  </button>
+</section>
+
+@if (checkoutAberto()) {
+  <div
+    class="checkout-overlay"
+    role="presentation"
+    (click)="fecharCheckout()"
+    (keydown.escape)="fecharCheckout()"
+  >
+    <section
+      class="checkout-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="checkout-titulo"
+      (click)="$event.stopPropagation()"
+    >
+      <button
+        type="button"
+        class="checkout-fechar"
+        aria-label="Fechar checkout"
+        (click)="fecharCheckout()"
+      >
+        ×
+      </button>
+
+      @if (checkoutEtapa() === 'opcoes') {
+        <h2 id="checkout-titulo">Vamos finalizar seu pedido?</h2>
+        <p>Entre ou crie sua conta para continuar com o pagamento.</p>
+        <div class="checkout-acoes">
+          <button
+            type="button"
+            class="checkout-botao checkout-botao-principal"
+            (click)="checkoutEtapa.set('login'); checkoutErro.set('')"
+          >
+            Fazer login
+          </button>
+          <button
+            type="button"
+            class="checkout-botao"
+            (click)="checkoutEtapa.set('cadastro'); checkoutErro.set('')"
+          >
+            Criar conta
+          </button>
+        </div>
+      } @else if (checkoutEtapa() === 'login') {
+        <h2 id="checkout-titulo">Entrar para continuar</h2>
+        <form [formGroup]="checkoutLoginForm" (ngSubmit)="entrarNoCheckout()" novalidate>
+          <label>
+            E-mail
+            <input type="email" formControlName="email" autocomplete="email" />
+            @if (checkoutLoginForm.controls.email.touched && checkoutLoginForm.controls.email.invalid) {
+              <span class="checkout-campo-erro">Informe um e-mail válido.</span>
+            }
+          </label>
+          <label>
+            Senha
+            <input type="password" formControlName="password" autocomplete="current-password" />
+            @if (checkoutLoginForm.controls.password.touched && checkoutLoginForm.controls.password.invalid) {
+              <span class="checkout-campo-erro">Informe sua senha.</span>
+            }
+          </label>
+          @if (checkoutErro()) {
+            <p class="checkout-erro" role="alert">{{ checkoutErro() }}</p>
+          }
+          <button class="checkout-botao checkout-botao-principal" type="submit" [disabled]="checkoutEnviando()">
+            {{ checkoutEnviando() ? 'Entrando...' : 'Entrar e continuar' }}
+          </button>
+        </form>
+        <button type="button" class="checkout-voltar" (click)="checkoutEtapa.set('opcoes')">
+          Voltar
+        </button>
+      } @else if (checkoutEtapa() === 'cadastro') {
+        <h2 id="checkout-titulo">Criar conta para continuar</h2>
+        <form [formGroup]="checkoutCadastroForm" (ngSubmit)="criarContaNoCheckout()" novalidate>
+          <label>
+            Nome de usuário
+            <input type="text" formControlName="username" autocomplete="username" />
+          </label>
+          <label>
+            Nome completo
+            <input type="text" formControlName="full_name" autocomplete="name" />
+          </label>
+          <label>
+            E-mail
+            <input type="email" formControlName="email" autocomplete="email" />
+          </label>
+          <label>
+            Senha
+            <input type="password" formControlName="password" autocomplete="new-password" />
+          </label>
+          <label>
+            Confirmar senha
+            <input type="password" formControlName="confirmar" autocomplete="new-password" />
+            @if (checkoutCadastroForm.controls.confirmar.touched && checkoutCadastroForm.controls.confirmar.hasError('senhasDiferentes')) {
+              <span class="checkout-campo-erro">As senhas não coincidem.</span>
+            }
+          </label>
+          @if (checkoutErro()) {
+            <p class="checkout-erro" role="alert">{{ checkoutErro() }}</p>
+          }
+          <button class="checkout-botao checkout-botao-principal" type="submit" [disabled]="checkoutEnviando()">
+            {{ checkoutEnviando() ? 'Criando conta...' : 'Criar conta e continuar' }}
+          </button>
+        </form>
+        <button type="button" class="checkout-voltar" (click)="checkoutEtapa.set('opcoes')">
+          Voltar
+        </button>
+      } @else {
+        <h2 id="checkout-titulo">Pagamento</h2>
+        <p>
+          Conta confirmada para {{ auth.session()?.username }}. Seu carrinho está pronto para
+          continuar.
+        </p>
+        <div class="checkout-aviso" role="note">
+          Este é um pagamento falso para fins acadêmicos. Nenhuma cobrança real será realizada.
+        </div>
+        <div class="checkout-pagamentos" role="group" aria-label="Forma de pagamento">
+          <button
+            type="button"
+            class="checkout-botao checkout-botao-pagamento"
+            [class.checkout-botao-selecionado]="pagamentoSelecionado() === 'cartao'"
+            [attr.aria-pressed]="pagamentoSelecionado() === 'cartao'"
+            (click)="selecionarPagamento('cartao')"
+          >
+            Cartão de crédito
+          </button>
+          <button
+            type="button"
+            class="checkout-botao checkout-botao-pagamento"
+            [class.checkout-botao-selecionado]="pagamentoSelecionado() === 'pix'"
+            [attr.aria-pressed]="pagamentoSelecionado() === 'pix'"
+            (click)="selecionarPagamento('pix')"
+          >
+            Pix
+          </button>
+        </div>
+        @if (pagamentoSelecionado(); as pagamento) {
+          <p class="checkout-pagamento-selecionado" role="status">
+            {{ pagamento === 'cartao' ? 'Cartão de crédito' : 'Pix' }} selecionado.
+            Esta simulação não processa pagamentos reais.
+          </p>
+          <button
+            type="button"
+            class="checkout-botao checkout-botao-principal"
+            [disabled]="checkoutEnviando()"
+            (click)="confirmarPagamento()"
+          >
+            @if (checkoutEnviando()) {
+              <span class="indicador-carregamento" aria-hidden="true"></span>
+              Confirmando...
+            } @else if (pagamentoConfirmado()) {
+              Fechar
+            } @else {
+              Confirmar
+            }
+          </button>
+          @if (pagamentoConfirmado()) {
+            <p class="checkout-pagamento-confirmado" role="status">
+              Pedido gerado com sucesso. Pagamento simulado confirmado.
+            </p>
+          } @else if (checkoutErro()) {
+            <p class="checkout-erro" role="alert">{{ checkoutErro() }}</p>
+          }
+        }
+      }
+    </section>
+  </div>
+}
+
+@if (historicoAberto()) {
+  <div
+    class="checkout-overlay"
+    role="presentation"
+    (click)="fecharHistorico()"
+    (keydown.escape)="fecharHistorico()"
+  >
+    <section
+      class="checkout-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="historico-titulo"
+      (click)="$event.stopPropagation()"
+    >
+      <button
+        type="button"
+        class="checkout-fechar"
+        aria-label="Fechar histórico de pedidos"
+        (click)="fecharHistorico()"
+      >
+        ×
+      </button>
+      <h2 id="historico-titulo">Histórico de pedidos</h2>
+      @if (pedidosCarregando()) {
+        <p>Carregando pedidos...</p>
+      } @else if (pedidosErro()) {
+        <p class="checkout-erro" role="alert">{{ pedidosErro() }}</p>
+      } @else if (pedidos().length === 0) {
+        <p>Você ainda não possui pedidos.</p>
+      } @else {
+        <ul class="lista-pedidos">
+          @for (pedido of pedidos(); track pedido.id) {
+            <li>
+              <strong>Pedido #{{ pedido.id }}</strong>
+              <span>{{ pedido.total_amount | currency: 'BRL' }}</span>
+              <span>{{ pedido.payment_method === 'pix' ? 'Pix' : 'Cartão de crédito' }}</span>
+              <ul class="lista-itens-pedido">
+                @for (item of pedido.items; track item.product_id) {
+                  <li>
+                    {{ item.name }} — {{ item.quantity }} × {{ item.price | currency: 'BRL' }}
+                    = {{ item.subtotal | currency: 'BRL' }}
+                  </li>
+                }
+              </ul>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+}
