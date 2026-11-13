@@ -20,7 +20,7 @@ app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
-    allow_origins=["http://localhost:4200", "https://doce-lar-eight.vercel.app"],
+    allow_origins=["http://localhost:4200", "https://encanto-doce-noiuvj3wp-encanto-doce.vercel.app/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
